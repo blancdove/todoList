@@ -3,11 +3,13 @@
     <section class="todoapp">
       <header class="header">
         <h1>todos</h1>
-        <!-- 添加备忘 -->
+        <!-- 添加备忘
+            v-autofocus实现打开页面时自动聚焦 -->
         <input
           class="new-todo"
           placeholder="你接下来要做什么?"
           v-model="newTodo"
+          v-autofocus
           @keyup.enter="addTodo"
         />
       </header>
@@ -19,33 +21,21 @@
               completed：该条备忘是否已经完成
               editing：该条备忘是否正在进行修改 -->
           <li
+            v-for="todo in computedTodos"
             class="todo"
-            v-for="todo in todos"
             :key="todo.id"
             :class="{
               completed: todo.completed,
-              editing: todo.id == editedTodo.id,
             }"
           >
-            <div class="view">
-              <!-- v-model 绑定备忘状态
-                  completed为true时勾选该条备忘-->
-              <input class="toggle" type="checkbox" v-model="todo.completed" />
-              <!-- 双击修改备忘 -->
-              <label @dblclick="editTodo(todo)">{{ todo.title }}</label>
-              <!-- 删除备忘 -->
-              <button class="destroy" @click="removeTodo(todo)"></button>
-            </div>
-            <!-- 通过li的类名editing来控制显示隐藏
-              修改备忘的数据，失焦或 Enter 键可更新数据，Esc键取消更新 -->
-            <input
-              class="edit"
-              type="text"
-              v-model="editedTodo.title"
-              @blur="doneEdit(editedTodo)"
-              @keyup.enter="doneEdit(editedTodo)"
-              @keyup.esc="cancelEdit()"
-            />
+            <!-- 使用组件
+                .sync修饰符“双向绑定”备忘内容和状态
+                监听删除delete事件 -->
+            <todo-item
+              :title.sync="todo.title"
+              :completed.sync="todo.completed"
+              @delete="removeTodo(todo)"
+            ></todo-item>
           </li>
         </ul>
         <!-- 页脚，
@@ -72,15 +62,17 @@
 </template>
 
 <script>
+import TodoItem from "../components/TodoItem";
 // 定义一个备忘id
 let id = 1;
 export default {
-  components: {},
+  components: {
+    TodoItem,
+  },
   data() {
     return {
       todos: [], // 储存所有备忘的列表
       newTodo: "", // 新增的备忘
-      editedTodo: {}, // 正在修改中的备忘
     };
   },
   computed: {
@@ -88,6 +80,14 @@ export default {
     remaining() {
       // 过滤掉已完成的
       return this.todos.filter((x) => !x.completed).length;
+    },
+    // 计算是否有相同的备忘
+    computedTodos() {
+      return this.todos.filter((item) => {
+        return (
+          item.title.toLowerCase().indexOf(this.newTodo.toLowerCase()) !== -1
+        );
+      });
     },
   },
   filters: {
@@ -112,43 +112,28 @@ export default {
       // 添加成功后清空输入框
       this.newTodo = "";
     },
-    // 编辑备忘
-    editTodo(todo) {
-      // 将待编辑的内容填充到修改的内容中
-      // 使用es6 ... 解构，
-      
-      this.editedTodo = { ...todo };
-    },
-    // 确认修改备忘
-    doneEdit(todo) {
-      // 当内容并未修改时，直接清空编辑对象
-      if(todo.title === this.editedTodo.title) { 
-        this.editedTodo = {};
-        return ;
-      }
-      // 将编辑中内容更新到列表中
-      this.todos = this.todos.map((x) => {
-        return todo.id == x.id ? { ...todo } : { ...x };
-      });
-      // 清空编辑对象
-      this.editedTodo = {};
-    },
-    // 取消修改备忘
-    cancelEdit() {
-      this.editedTodo = {};
-    },
-    // 删除备忘
-    removeTodo(todo) {
-      // 匹配 id 找出该备忘，然后移除
-      const index = this.todos.findIndex((x) => x.id === todo.id);
-      this.todos.splice(index, 1);
-    },
+
     // 删除已完成的备忘
     removeCompleted() {
-      this.todos = this.todos.filter((x) => !x.completed);
+      this.todos = this.todos.filter((item) => !item.completed);
+    },
+
+    // 删除备忘
+    removeTodo(todo) {
+      const index = this.todos.findIndex((item) => item.id === todo.id);
+      this.todos.splice(index, 1);
     },
   },
-  
+  directives: {
+    // 自定义指令
+    autofocus: {
+      // 钩子函数inserted：被绑定元素插入父节点时调用
+      inserted: function (el) {
+        // 聚焦元素
+        el.focus();
+      },
+    },
+  },
 };
 </script>
 
